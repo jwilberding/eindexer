@@ -1,19 +1,10 @@
-tristan@kfgyeo:~/Devel/eindexer$ sinan shell                             
-[build] start                                                            
-[build] Building /home/tristan/Devel/eindexer/lib/eindexer/src/utils.erl 
-[build] Building /home/tristan/Devel/eindexer/lib/eindexer/src/text_file_parser.erl                                                               
-[build] /home/tristan/Devel/eindexer/lib/eindexer/src/text_file_parser.erl:10:warning:function parse/0 is unused                                  
+About:
 
-[build] Building /home/tristan/Devel/eindexer/lib/eindexer/src/porter.erl
-[build] Building /home/tristan/Devel/eindexer/lib/eindexer/src/conditions.erl
-[build] Building /home/tristan/Devel/eindexer/lib/eindexer/src/eindexer.erl
-[build] Building /home/tristan/Devel/eindexer/lib/eindexer/src/eindexer_sup.erl
-[build] Building /home/tristan/Devel/eindexer/lib/eindexer/src/eindexer_app.erl
-[build] stop
-starting shell ...
-Erlang (BEAM) emulator version 5.6.5 [source] [smp:2] [async-threads:0] [kernel-poll:false]
+eindexer is an ad-hoc text indexing engine written entirely in Erlang. It was originally designed to index edoc files for erlware, but is capable of being used as a general purpose text retrieval engine.
 
-Eshell V5.6.5  (abort with ^G)
+Running:
+
+$ sinan shell                             
 1> application:start(eindexer).
 ok
 2> eindexer:index(text_files, "/home/tristan/Documents/org-mode").
