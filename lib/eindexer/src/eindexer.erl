@@ -24,24 +24,47 @@
 %% API
 %%====================================================================
 %%--------------------------------------------------------------------
-%% Function: start_link() -> {ok,Pid} | ignore | {error,Error}
-%% Description: Starts the server
+%% @doc Starts the server
+%% @spec () -> {ok,Pid} | ignore | {error,Error}
+%% @end
 %%--------------------------------------------------------------------
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+%%--------------------------------------------------------------------
+%% @doc Indexes all files below the file location provided.
+%% @spec (Type, Location::string()) -> void()
+%% where
+%%  Type = text_files | edocs
+%% @end
+%%--------------------------------------------------------------------
+index (Type, Loc) ->
+    gen_server:cast(?SERVER, {index, {Type, Loc}}).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Indexes all files below the file location provided 
+%% @spec () -> void()
+%% @end
+%%--------------------------------------------------------------------
+reindex () ->
+    gen_server:call(?SERVER, reindex).
+
+%%--------------------------------------------------------------------
+%% @doc Starts the server
+%% @spec run_query(QueryString) -> Results
+%% where
+%%  Results = [Result]
+%%   Result = {AppName, {integer(), AppVsn}}
+%% @end
+%%--------------------------------------------------------------------
+run_query (QueryString) ->
+    gen_server:call(?SERVER, {run_query, QueryString}).
 
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
 
-index (Type, Loc) ->
-    gen_server:cast(?SERVER, {index, Type, Loc}).
-
-reindex () ->
-    gen_server:call(?SERVER, {reindex}).
-
-run_query (Terms) ->
-    gen_server:call(?SERVER, {run_query, Terms}).
 
 %%--------------------------------------------------------------------
 %% Function: init(Args) -> {ok, State} |
@@ -68,20 +91,28 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
-handle_call({reindex}, _From, State) ->
+handle_call(reindex, _From, State) ->
     {reply, ok, State};
 handle_call({run_query, Query}, _From, State) ->
     Terms = utils:clean (Query, State#state.trigrams),
     
     FinalRankings = lists:foldl (fun (Term, Rankings) ->
-                                         case ets:lookup (State#state.idf, Term) of
+                                         NewRankings = case ets:lookup (State#state.idf, Term) of
                                              [{_, IDF}] ->
-                                                 Results = ets:lookup (State#state.doc_term, Term),
+                                                 Results = ets:lookup (State#state.doc_term, Term),  
                                                  lists:foldl (fun ({_, Entry, TF}, NewRankings) ->
-                                                                      dict:update (Entry, fun(Old) -> Old + TF*IDF end, TF*IDF, NewRankings)
+                                                                      dict:update (Entry, fun({Old, Vsn}) -> {Old + TF*IDF, Vsn} end, {TF*IDF, hd(hd(ets:match(State#state.docs, {application, Entry, '_', '$1', '_'})))}, NewRankings)
                                                               end, Rankings, Results);
                                              [] ->
                                                  Rankings
+                                         end,
+                                         PossibleApp = list_to_atom(binary_to_list(Term)),
+                                         Results2 = ets:match (State#state.docs, {application, PossibleApp, '_', '$1', '_'}),
+                                         case Results2 of
+                                             [] ->
+                                                 NewRankings;
+                                             [[Vsn]] ->
+                                                 dict:update (PossibleApp, fun({Old, _Vsn}) -> {Old + 100, Vsn} end, {100, Vsn}, NewRankings)
                                          end
                                  end, dict:new(), Terms),
     RankingsList = lists:reverse (lists:keysort (2, dict:to_list (FinalRankings))),
@@ -90,10 +121,7 @@ handle_call({run_query, Query}, _From, State) ->
     %lists:map (fun({Entry, Ranking}) ->
     %                   io:format("~s : ~p~n", [Entry, Ranking])
     %           end, RankingsList),
-    {reply, RankingsList, State};
-handle_call(_Request, _From, State) ->
-    Reply = ok,
-    {reply, Reply, State}.
+    {reply, RankingsList, State}.
 
 %%--------------------------------------------------------------------
 %% Function: handle_cast(Msg, State) -> {noreply, State} |
@@ -101,7 +129,7 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({index, Type, Loc}, State) ->
+handle_cast({index, {Type, Loc}}, State) ->
     {_, {H, M, S}} = calendar:local_time(),
     StartSeconds = 360*H + M*60 + S,
     case Type of
@@ -113,8 +141,6 @@ handle_cast({index, Type, Loc}, State) ->
     {_, {H2, M2, S2}} = calendar:local_time(),
     FinishSeconds = 360*H2 + M2 *60 + S2,
     io:format ("~nTime to Index: ~p seconds~n", [FinishSeconds - StartSeconds]),
-    {noreply, State};
-handle_cast(_Msg, State) ->
     {noreply, State}.
 
 %%--------------------------------------------------------------------

@@ -2,15 +2,24 @@ About:
 
 eindexer is an ad-hoc text indexing engine written entirely in Erlang. It was originally designed to index edoc files for erlware, but is capable of being used as a general purpose text retrieval engine.
 
+Setup:
+
+Edit eindexer/lib/eindexer/include/eindexer.hrl and set ETSTRIGRAMS to the proper path.
+
 Running:
 
 $ sinan shell                             
 1> application:start(eindexer).
 ok
-2> eindexer:index(text_files, "/home/tristan/Documents/org-mode").
+2> eindexer:index(edocs, "/usr/local/erlware/lib/").
 ok
-3> eindexer:run_query ("chatyeo languages IIT").
-[{"/home/tristan/Documents/org-mode/bio",2.772588722239781},
- {"/home/tristan/Documents/org-mode/main.org",
-  1.3862943611198906}]
+3>
+Time to Index: 10 seconds
+
+3> eindexer:run_query("sinan").
+[{sinan,{106.45528660977838,"0.16.0.4"}},           
+ {faxien,{17.214097626075695,"0.42.1.0"}},          
+ {epkg,{17.214097626075695,"0.14.0.1"}},            
+ {ewrepo,{2.151762203259462,"0.18.8.0"}},           
+ {sinan_web_api,{2.151762203259462,"0.1.0.6"}}]
 4>
